@@ -2,26 +2,38 @@
 #include "quadtree.hpp"
 #include <vector>
 
-void drawTree(const QuadTree &quadTree)
+void drawTree(const QuadTree *quadTree)
 {
-    auto extents = quadTree.getExtents();
-    auto quads = quadTree.getQuads();
+    auto extents = quadTree->getExtents();
+    auto quads = quadTree->getQuads();
 
     DrawRectangleLines(extents.min.x, extents.min.y, extents.max.x - extents.min.x, extents.max.y - extents.min.y, RED);
 
-    for (const Node &n : quadTree.getNodes())
+    for (const Node &n : quadTree->getNodes())
     {
         DrawRectangleRec(n.rect, quads.topLeft ? PURPLE : GREEN); // PURPLE if node crosses quad boudaries
     }
 
     if (quads.topLeft)
     {
-        drawTree(*quads.topLeft.get());
-        drawTree(*quads.topRight.get());
-        drawTree(*quads.botLeft.get());
-        drawTree(*quads.botRight.get());
+        drawTree(quads.topLeft);
+        drawTree(quads.topRight);
+        drawTree(quads.botLeft);
+        drawTree(quads.botRight);
     }
 }
+
+void testFind(int id, const std::vector<Rectangle> &objects, QuadTree *quadTree)
+{
+    const auto rect = objects.at(id);
+    auto *qt = quadTree->findQuadContaingNodeIdByRect(id, rect);
+
+    printf("\nid: %d found? %s", id, qt != nullptr ? "true" : "false");
+    if (qt)
+    {
+        qt->print();
+    }
+};
 
 int main()
 {
@@ -74,26 +86,14 @@ int main()
             }
         }
 
-        drawTree(quadTree);
+        drawTree(&quadTree);
 
         EndDrawing();
     }
 
-    auto testFind = [objects, quadTree](int id) mutable
-    {
-        const auto rect = objects.at(id);
-        auto *qt = quadTree.findQuadContaingNodeIdByRect(id, rect);
-
-        printf("\nid: %d found? %s", id, qt != nullptr ? "true" : "false");
-        if (qt)
-        {
-            (*qt)->print();
-        }
-    };
-
-    testFind(50);
-    testFind(11);
-    testFind(0);
+    testFind(50, objects, &quadTree);
+    testFind(11, objects, &quadTree);
+    testFind(0, objects, &quadTree);
 
     CloseWindow();
 

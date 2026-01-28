@@ -20,11 +20,11 @@ void Node::print() const
 int QuadTree::nextId = 0;
 
 QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
-                                                             topLeft(std::shared_ptr<QuadTree>()),
-                                                             topRight(std::shared_ptr<QuadTree>()),
-                                                             botLeft(std::shared_ptr<QuadTree>()),
-                                                             botRight(std::shared_ptr<QuadTree>()),
-                                                             nodes(), _sharedFromThis()
+                                                             topLeft(std::unique_ptr<QuadTree>()),
+                                                             topRight(std::unique_ptr<QuadTree>()),
+                                                             botLeft(std::unique_ptr<QuadTree>()),
+                                                             botRight(std::unique_ptr<QuadTree>()),
+                                                             nodes()
 {
     nodes.reserve(MAX_QUAD_NODES * 2);
     id = QuadTree::nextId++;
@@ -52,7 +52,7 @@ bool QuadTree::isWithinBoundary(const Rectangle &rect)
     return rect.x >= extents.min.x && rect.x <= extents.max.x && rect.y >= extents.min.y && rect.y <= extents.max.y && rect.x + rect.width <= extents.max.x && rect.y + rect.height <= extents.max.y;
 }
 
-std::shared_ptr<QuadTree> *QuadTree::whichQuadContainsRect(const Rectangle &rect)
+QuadTree *QuadTree::whichQuadContainsRect(const Rectangle &rect)
 {
     if (isLeaf())
     {
@@ -61,28 +61,28 @@ std::shared_ptr<QuadTree> *QuadTree::whichQuadContainsRect(const Rectangle &rect
 
     if (topLeft->isWithinBoundary(rect))
     {
-        return &topLeft;
+        return topLeft.get();
     }
 
     if (topRight->isWithinBoundary(rect))
     {
-        return &topRight;
+        return topRight.get();
     }
 
     if (botLeft->isWithinBoundary(rect))
     {
-        return &botLeft;
+        return botLeft.get();
     }
 
     if (botRight->isWithinBoundary(rect))
     {
-        return &botRight;
+        return botRight.get();
     }
 
     return nullptr;
 }
 
-std::shared_ptr<QuadTree> *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
+QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
 {
     printf("\nentering find func");
 
@@ -98,12 +98,7 @@ std::shared_ptr<QuadTree> *QuadTree::findQuadContaingNodeIdByRect(int id, const 
         if (index > -1)
         {
             printf("...yes.");
-            // return &(shared_from_this());
-            if (!_sharedFromThis)
-            {
-                _sharedFromThis = shared_from_this();
-            }
-            return &_sharedFromThis;
+            return this;
         }
         else
         {
@@ -128,10 +123,10 @@ std::shared_ptr<QuadTree> *QuadTree::findQuadContaingNodeIdByRect(int id, const 
     }
 
     printf("\n Found a quad. ");
-    (*quadTree)->print();
+    quadTree->print();
 
     printf("\nrecursing...");
-    return (*quadTree)->findQuadContaingNodeIdByRect(id, rect);
+    return quadTree->findQuadContaingNodeIdByRect(id, rect);
 }
 
 // private child quad node inserter
@@ -313,7 +308,7 @@ void QuadTree::removeNode(int id, const Rectangle &searchRect)
     }
 
     // remove the node from the child quad we found above...
-    (*quadTree)->removeNode(id, searchRect);
+    quadTree->removeNode(id, searchRect);
 
     // check if we have to rebalance this QuadTree
     if (nodes.size() + topLeft->getNodeCount() + topRight->getNodeCount() + botLeft->getNodeCount() + botRight->getNodeCount() >= MAX_QUAD_NODES)
@@ -357,10 +352,10 @@ Quads QuadTree::getQuads() const
 
     if (!isLeaf())
     {
-        quads.topLeft = topLeft;
-        quads.topRight = topRight;
-        quads.botLeft = botLeft;
-        quads.botRight = botRight;
+        quads.topLeft = topLeft.get();
+        quads.topRight = topRight.get();
+        quads.botLeft = botLeft.get();
+        quads.botRight = botRight.get();
     }
 
     return quads;
