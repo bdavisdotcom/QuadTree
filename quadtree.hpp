@@ -24,19 +24,27 @@ struct Node
 
 struct Quads;
 
-class QuadTree
+class QuadTree : public std::enable_shared_from_this<QuadTree>
 {
 public:
     QuadTree() = delete;
     QuadTree(const Vector2 &min, const Vector2 &max);
+    ~QuadTree();
 
     bool isWithinBoundary(const Rectangle &rect);
     void insertNode(const Node &node);
-    void removeNode(int id);
-    int findNode(int id);
+    void removeNode(int id, const Rectangle &searchRect);
+    int findNodeIndexAtThisLevel(int id);
+    bool isLeaf() const;
     void print();
 
-    std::shared_ptr<QuadTree> whichQuadIsWithinBoundary(const Rectangle &rect);
+    // returns which Quad has extents (at this current level) which contain the supplied rectangle. Nonrecursive.
+    std::shared_ptr<QuadTree> *whichQuadContainsRect(const Rectangle &rect);
+
+    // find the actual Quad that has extents that contain the supplied rectangle
+    // AND which also contains the node (by the node's id) in the nodes list
+    // this recursively searches down the tree
+    std::shared_ptr<QuadTree> *findQuadContaingNodeIdByRect(int id, const Rectangle &rect);
 
     const Extents &getExtents() const;
 
@@ -55,7 +63,12 @@ private:
     std::vector<Node> nodes;
     void splitQuads();
     bool _insertNode(const Node &node);
-    void _removeNodeAtThisLevel(int index);
+    void _collapseChildQuads();
+
+    std::shared_ptr<QuadTree> _sharedFromThis;
+    int id;
+
+    static int nextId;
 };
 
 struct Quads

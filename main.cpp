@@ -58,35 +58,42 @@ int main()
 
         ClearBackground(RAYWHITE);
 
-        if (timeAccum >= 0.005f && !doneBuildingTree)
+        if (nodeAddIndex < NUMBER_OF_NODES)
         {
-            if (nodeAddIndex < NUMBER_OF_NODES)
+            if (nodeAddIndex >= NUMBER_OF_NODES)
             {
-                if (nodeAddIndex >= NUMBER_OF_NODES)
-                {
-                    break;
-                }
-                auto n = Node{nodeAddIndex, objects.at(nodeAddIndex)};
-                quadTree.insertNode(n);
-                nodeAddIndex++;
+                break;
             }
-            else
+            auto n = Node{nodeAddIndex, objects.at(nodeAddIndex)};
+            quadTree.insertNode(n);
+            nodeAddIndex++;
+            if (nodeAddIndex >= NUMBER_OF_NODES)
             {
                 doneBuildingTree = true;
                 printf("\nDone building the tree.\n");
             }
-            timeAccum = 0.0f;
         }
 
         drawTree(quadTree);
 
         EndDrawing();
-
-        if (!doneBuildingTree)
-        {
-            timeAccum += GetFrameTime();
-        }
     }
+
+    auto testFind = [objects, quadTree](int id) mutable
+    {
+        const auto rect = objects.at(id);
+        auto *qt = quadTree.findQuadContaingNodeIdByRect(id, rect);
+
+        printf("\nid: %d found? %s", id, qt != nullptr ? "true" : "false");
+        if (qt)
+        {
+            (*qt)->print();
+        }
+    };
+
+    testFind(50);
+    testFind(11);
+    testFind(0);
 
     CloseWindow();
 

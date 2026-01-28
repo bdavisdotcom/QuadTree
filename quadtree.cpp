@@ -17,14 +17,34 @@ void Node::print() const
     printf("Node: id:%d x:%f y:%f w:%f h:%f", id, rect.x, rect.y, rect.width, rect.height);
 }
 
+int QuadTree::nextId = 0;
+
 QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
                                                              topLeft(std::shared_ptr<QuadTree>()),
                                                              topRight(std::shared_ptr<QuadTree>()),
                                                              botLeft(std::shared_ptr<QuadTree>()),
                                                              botRight(std::shared_ptr<QuadTree>()),
-                                                             nodes()
+                                                             nodes(), _sharedFromThis()
 {
     nodes.reserve(MAX_QUAD_NODES * 2);
+    id = QuadTree::nextId++;
+}
+
+QuadTree::~QuadTree()
+{
+    printf(" QuadTree dtor(%d) -- ", id);
+    print();
+}
+
+bool QuadTree::isLeaf() const
+{
+    // if any of the child quads are present, it's not a leaf (there will be all 4 quads or NONE)
+    if (topLeft)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 bool QuadTree::isWithinBoundary(const Rectangle &rect)
@@ -32,34 +52,86 @@ bool QuadTree::isWithinBoundary(const Rectangle &rect)
     return rect.x >= extents.min.x && rect.x <= extents.max.x && rect.y >= extents.min.y && rect.y <= extents.max.y && rect.x + rect.width <= extents.max.x && rect.y + rect.height <= extents.max.y;
 }
 
-std::shared_ptr<QuadTree> QuadTree::whichQuadIsWithinBoundary(const Rectangle &rect)
+std::shared_ptr<QuadTree> *QuadTree::whichQuadContainsRect(const Rectangle &rect)
 {
-    if (!topLeft)
+    if (isLeaf())
     {
-        return std::shared_ptr<QuadTree>();
+        return nullptr;
     }
 
     if (topLeft->isWithinBoundary(rect))
     {
-        return topLeft;
+        return &topLeft;
     }
 
     if (topRight->isWithinBoundary(rect))
     {
-        return topRight;
+        return &topRight;
     }
 
     if (botLeft->isWithinBoundary(rect))
     {
-        return botLeft;
+        return &botLeft;
     }
 
     if (botRight->isWithinBoundary(rect))
     {
-        return botRight;
+        return &botRight;
     }
 
-    return std::shared_ptr<QuadTree>();
+    return nullptr;
+}
+
+std::shared_ptr<QuadTree> *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
+{
+    printf("\nentering find func");
+
+    printf("\n is this a leaf node? %s", isLeaf() ? "true" : "false");
+
+    printf("\nany nodes here? %d", (int)nodes.size());
+
+    // is the node here in this nodes list?
+    if (nodes.size() > 0)
+    {
+        printf("\nIs it at this level?");
+        int index = findNodeIndexAtThisLevel(id);
+        if (index > -1)
+        {
+            printf("...yes.");
+            // return &(shared_from_this());
+            if (!_sharedFromThis)
+            {
+                _sharedFromThis = shared_from_this();
+            }
+            return &_sharedFromThis;
+        }
+        else
+        {
+            printf(" No...");
+        }
+    }
+
+    // is this a leaf node?
+    if (isLeaf())
+    {
+        printf("...This is a leaf node, so, no children, bailing out");
+        return nullptr;
+    }
+
+    printf("\nsee which quad contains rect");
+
+    // find out which quad potentially contains the node id passed
+    auto *quadTree = whichQuadContainsRect(rect);
+    if (!quadTree)
+    {
+        return nullptr;
+    }
+
+    printf("\n Found a quad. ");
+    (*quadTree)->print();
+
+    printf("\nrecursing...");
+    return (*quadTree)->findQuadContaingNodeIdByRect(id, rect);
 }
 
 // private child quad node inserter
@@ -103,7 +175,7 @@ void QuadTree::insertNode(const Node &node)
 
     // if this quad was already split, it's no longer a leaf node,
     // so we cannot store any nodes here... UNLESS this node would cross the boundaries of the children
-    if (topLeft || topRight || botLeft || botRight)
+    if (!isLeaf())
     {
         if (_insertNode(node))
         {
@@ -160,8 +232,13 @@ void QuadTree::insertNode(const Node &node)
     }
 }
 
-int QuadTree::findNode(int id)
+int QuadTree::findNodeIndexAtThisLevel(int id)
 {
+    if (nodes.size() == 0)
+    {
+        return -1;
+    }
+
     auto it = std::find_if(nodes.begin(),
                            nodes.end(),
                            [id](const Node &n)
@@ -180,24 +257,8 @@ int QuadTree::getNodeCount()
     return nodes.size();
 }
 
-void QuadTree::_removeNodeAtThisLevel(int index)
+void QuadTree::_collapseChildQuads()
 {
-    // swap and pop
-    std::swap(nodes[index], nodes.back());
-    nodes.pop_back();
-    int nodeCount = nodes.size();
-
-    if (nodeCount >= MAX_QUAD_NODES)
-    {
-        return;
-    }
-
-    // see if we *can* collapse the quad children...i.e., if collapsing and moving the children here would push it over the max node limit...
-    if (topLeft && (nodeCount + topLeft->getNodeCount() + topRight->getNodeCount() + botLeft->getNodeCount() + botRight->getNodeCount()) >= MAX_QUAD_NODES)
-    {
-        return; // no, we can't collapse the children...
-    }
-
     // copy nodes from child quads
     const auto &tlSrc = topLeft->getNodes();
     const auto &trSrc = topRight->getNodes();
@@ -216,31 +277,58 @@ void QuadTree::_removeNodeAtThisLevel(int index)
     botRight.reset();
 }
 
-void QuadTree::removeNode(int id)
+void QuadTree::removeNode(int id, const Rectangle &searchRect)
 {
-    int index = findNode(id);
+    int index = findNodeIndexAtThisLevel(id);
     // not found and we haven't subdivided this quad yet
-    if (index == -1 && !topLeft)
+    if (index == -1 && isLeaf())
     {
         return;
     }
 
+    // found it at this level
     if (index >= 0)
     {
-        return _removeNodeAtThisLevel(index);
+        //  swap and pop
+        std::swap(nodes[index], nodes.back());
+        nodes.pop_back();
+        return;
     }
 
-    const Node &node = nodes.at(index);
+    // if we get here, we didn't find it on this level
+    // but we *may* have 4 child quads to check
 
-    // find which child quad this node belongs in
-    std::shared_ptr<QuadTree> quadTree = whichQuadIsWithinBoundary(node.rect);
+    // no child quads, bail out
+    if (isLeaf())
+    {
+        return;
+    }
+
+    // find which child should contain the rect
+    auto *quadTree = whichQuadContainsRect(searchRect);
     if (!quadTree)
     {
-        return; // didn't find any, bail...
+        // couldn't find a quad that contains this rect, so bail
+        return;
     }
 
     // remove the node from the child quad we found above...
-    quadTree->removeNode(id);
+    (*quadTree)->removeNode(id, searchRect);
+
+    // check if we have to rebalance this QuadTree
+    if (nodes.size() + topLeft->getNodeCount() + topRight->getNodeCount() + botLeft->getNodeCount() + botRight->getNodeCount() >= MAX_QUAD_NODES)
+    {
+        return; // no, we can't collapse the child quads...
+    }
+
+    // if any of the child quads also have child quads, then we cannot collapse the children
+    if (!topLeft->isLeaf() || !topRight->isLeaf() || !botLeft->isLeaf() || !botRight->isLeaf())
+    {
+        return;
+    }
+
+    // if we reach this point, we *can* collapse the child quads...
+    _collapseChildQuads();
 }
 
 void QuadTree::splitQuads()
@@ -267,7 +355,7 @@ Quads QuadTree::getQuads() const
 {
     auto quads = Quads();
 
-    if (topLeft)
+    if (!isLeaf())
     {
         quads.topLeft = topLeft;
         quads.topRight = topRight;
