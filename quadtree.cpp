@@ -14,7 +14,7 @@ Extents::Extents(Vector2 min, Vector2 max) : min(min), max(max)
 
 void Node::print() const
 {
-    printf("Node: id:%d x:%f y:%f w:%f h:%f", id, rect.x, rect.y, rect.width, rect.height);
+    printf("\nNode: id:%d x:%f y:%f w:%f h:%f", id, rect.x, rect.y, rect.width, rect.height);
 }
 
 int QuadTree::nextId = 0;
@@ -32,7 +32,7 @@ QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
 
 QuadTree::~QuadTree()
 {
-    printf(" QuadTree dtor(%d) -- ", id);
+    printf("\n*** QuadTree dtor(%d) -- ", id);
     print();
 }
 
@@ -84,36 +84,21 @@ QuadTree *QuadTree::whichQuadContainsRect(const Rectangle &rect)
 
 QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
 {
-    printf("\nentering find func");
-
-    printf("\n is this a leaf node? %s", isLeaf() ? "true" : "false");
-
-    printf("\nany nodes here? %d", (int)nodes.size());
-
     // is the node here in this nodes list?
     if (nodes.size() > 0)
     {
-        printf("\nIs it at this level?");
         int index = findNodeIndexAtThisLevel(id);
         if (index > -1)
         {
-            printf("...yes.");
             return this;
-        }
-        else
-        {
-            printf(" No...");
         }
     }
 
     // is this a leaf node?
     if (isLeaf())
     {
-        printf("...This is a leaf node, so, no children, bailing out");
         return nullptr;
     }
-
-    printf("\nsee which quad contains rect");
 
     // find out which quad potentially contains the node id passed
     auto *quadTree = whichQuadContainsRect(rect);
@@ -122,10 +107,8 @@ QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
         return nullptr;
     }
 
-    printf("\n Found a quad. ");
     quadTree->print();
 
-    printf("\nrecursing...");
     return quadTree->findQuadContaingNodeIdByRect(id, rect);
 }
 
@@ -156,16 +139,16 @@ bool QuadTree::_insertNode(const Node &node)
     return false;
 }
 
-void QuadTree::insertNode(const Node &node)
+bool QuadTree::insertNode(const Node &node)
 {
-    if (node.id == -1)
+    if (node.id < 0)
     {
-        return;
+        return false;
     }
 
     if (!isWithinBoundary(node.rect))
     {
-        return;
+        return false;
     }
 
     // if this quad was already split, it's no longer a leaf node,
@@ -174,9 +157,8 @@ void QuadTree::insertNode(const Node &node)
     {
         if (_insertNode(node))
         {
-            return;
+            return true;
         }
-        printf("  node crosses child nodes' boundaries, so it must go here...");
         // if we get past this return, the node crosses the boundaries of the child nodes
         // so we have to let it go at this level, even though this region was already split
         // i.e., the child node rect MUST completely fix inside this quad's dimensions
@@ -187,7 +169,7 @@ void QuadTree::insertNode(const Node &node)
     if (nodes.size() < MAX_QUAD_NODES)
     {
         nodes.push_back(node);
-        return;
+        return true;
     }
 
     // ...otherwise, there's no room left, so, split the region into 4 child quads
@@ -225,6 +207,8 @@ void QuadTree::insertNode(const Node &node)
         nodes.push_back(cantMoveStack.top());
         cantMoveStack.pop();
     }
+
+    return true;
 }
 
 int QuadTree::findNodeIndexAtThisLevel(int id)
@@ -272,13 +256,13 @@ void QuadTree::_collapseChildQuads()
     botRight.reset();
 }
 
-void QuadTree::removeNode(int id, const Rectangle &searchRect)
+bool QuadTree::removeNode(int id, const Rectangle &searchRect)
 {
     int index = findNodeIndexAtThisLevel(id);
     // not found and we haven't subdivided this quad yet
     if (index == -1 && isLeaf())
     {
-        return;
+        return false;
     }
 
     // found it at this level
@@ -287,7 +271,7 @@ void QuadTree::removeNode(int id, const Rectangle &searchRect)
         //  swap and pop
         std::swap(nodes[index], nodes.back());
         nodes.pop_back();
-        return;
+        return true;
     }
 
     // if we get here, we didn't find it on this level
@@ -296,7 +280,7 @@ void QuadTree::removeNode(int id, const Rectangle &searchRect)
     // no child quads, bail out
     if (isLeaf())
     {
-        return;
+        return false;
     }
 
     // find which child should contain the rect
@@ -304,33 +288,35 @@ void QuadTree::removeNode(int id, const Rectangle &searchRect)
     if (!quadTree)
     {
         // couldn't find a quad that contains this rect, so bail
-        return;
+        return false;
     }
 
     // remove the node from the child quad we found above...
     quadTree->removeNode(id, searchRect);
 
+    // after this point we already return true, since the node was already removed
+    // the rest of the steps are for optimization
+
     // check if we have to rebalance this QuadTree
     if (nodes.size() + topLeft->getNodeCount() + topRight->getNodeCount() + botLeft->getNodeCount() + botRight->getNodeCount() >= MAX_QUAD_NODES)
     {
-        return; // no, we can't collapse the child quads...
+        return true; // no, we can't collapse the child quads...
     }
 
     // if any of the child quads also have child quads, then we cannot collapse the children
     if (!topLeft->isLeaf() || !topRight->isLeaf() || !botLeft->isLeaf() || !botRight->isLeaf())
     {
-        return;
+        return true;
     }
 
     // if we reach this point, we *can* collapse the child quads...
     _collapseChildQuads();
+
+    return true;
 }
 
 void QuadTree::splitQuads()
 {
-    printf("\nSPLITTING");
-    print();
-
     Vector2 midTop = Vector2{extents.min.x + ((extents.max.x - extents.min.x) / 2), extents.min.y};
     Vector2 midMid = Vector2{midTop.x, extents.min.y + ((extents.max.y - extents.min.y) / 2)};
     Vector2 midBot = Vector2{midTop.x, extents.max.y};
@@ -343,7 +329,7 @@ void QuadTree::splitQuads()
 
 void QuadTree::print()
 {
-    printf(" Quad min x:%d y:%d | max x:%d y:%d\n", (int)extents.min.x, (int)extents.min.y, (int)extents.max.x, (int)extents.max.y);
+    printf("\nQuad min x:%d y:%d | max x:%d y:%d\n", (int)extents.min.x, (int)extents.min.y, (int)extents.max.x, (int)extents.max.y);
 }
 
 Quads QuadTree::getQuads() const

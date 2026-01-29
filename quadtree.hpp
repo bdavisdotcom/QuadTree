@@ -32,8 +32,8 @@ public:
     ~QuadTree();
 
     bool isWithinBoundary(const Rectangle &rect);
-    void insertNode(const Node &node);
-    void removeNode(int id, const Rectangle &searchRect);
+    bool insertNode(const Node &node);
+    bool removeNode(int id, const Rectangle &searchRect);
     int findNodeIndexAtThisLevel(int id);
     bool isLeaf() const;
     void print();

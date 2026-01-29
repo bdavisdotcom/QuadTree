@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include "quadtree.hpp"
 #include <vector>
+#include <iostream>
 
 void drawTree(const QuadTree *quadTree)
 {
@@ -11,7 +12,8 @@ void drawTree(const QuadTree *quadTree)
 
     for (const Node &n : quadTree->getNodes())
     {
-        DrawRectangleRec(n.rect, quads.topLeft ? PURPLE : GREEN); // PURPLE if node crosses quad boudaries
+        DrawRectangleRec(n.rect, n.id == 0 ? BLUE : quads.topLeft ? PURPLE
+                                                                  : GREEN); // PURPLE if node crosses quad boudaries
     }
 
     if (quads.topLeft)
@@ -60,9 +62,15 @@ int main()
 
     SetTargetFPS(60);
 
-    float timeAccum = GetTime();
+    float timeAccum = 0;
     int nodeAddIndex = 0;
+    int nodeRemoveIndex = objects.size() - 1;
     bool doneBuildingTree = false;
+    bool done = false;
+    Vector2 velocity = Vector2(20.0, 20.0);
+    int keyPressed = 0;
+
+    printf("\nobject count: %d", (int)objects.size());
 
     while (!WindowShouldClose())
     {
@@ -72,10 +80,6 @@ int main()
 
         if (nodeAddIndex < NUMBER_OF_NODES)
         {
-            if (nodeAddIndex >= NUMBER_OF_NODES)
-            {
-                break;
-            }
             auto n = Node{nodeAddIndex, objects.at(nodeAddIndex)};
             quadTree.insertNode(n);
             nodeAddIndex++;
@@ -83,12 +87,43 @@ int main()
             {
                 doneBuildingTree = true;
                 printf("\nDone building the tree.\n");
+                printf("\nPress space key to start removing...");
             }
+        }
+
+        if (doneBuildingTree && nodeRemoveIndex > -1 && keyPressed == KEY_ENTER)
+        {
+            auto r = &objects.at(nodeRemoveIndex);
+            bool res = quadTree.removeNode(nodeRemoveIndex, *r);
+            nodeRemoveIndex--;
+        }
+
+        if (nodeRemoveIndex == 0 && !done)
+        {
+            printf("\nDONE REMOVING...");
+            done = true;
+        }
+
+        if (doneBuildingTree && timeAccum >= 1.0 && keyPressed == KEY_ENTER)
+        {
+            printf("\nNode count: %d", nodeRemoveIndex);
         }
 
         drawTree(&quadTree);
 
         EndDrawing();
+
+        if (timeAccum >= 1.0)
+        {
+            timeAccum = 0.0;
+        }
+
+        timeAccum += GetFrameTime();
+
+        if (doneBuildingTree && IsKeyPressed(KEY_ENTER))
+        {
+            keyPressed = KEY_ENTER;
+        }
     }
 
     testFind(50, objects, &quadTree);
