@@ -1,4 +1,3 @@
-* C++ QuadTree implementation
-Requires Raylib to run the test harness main.cpp
+# C++ QuadTree implementation
 
-This is set up for Linux
+Requires Raylib to run the test harness main.cpp

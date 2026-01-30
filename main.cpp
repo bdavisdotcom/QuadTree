@@ -67,7 +67,7 @@ int main()
     int nodeRemoveIndex = objects.size() - 1;
     bool doneBuildingTree = false;
     bool done = false;
-    Vector2 velocity = Vector2(20.0, 20.0);
+    Vector2 velocity = Vector2{20.0f, 20.0f};
     int keyPressed = 0;
 
     printf("\nobject count: %d", (int)objects.size());

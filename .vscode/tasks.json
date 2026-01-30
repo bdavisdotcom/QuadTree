@@ -1,0 +1,55 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: Compile",
+			"command": "/usr/bin/g++-14",
+			"args": [
+				"-fdiagnostics-color=always",
+				"-g",
+				"-c",
+				"${workspaceFolder}/*.cpp",
+				"-I",
+				"/usr/local/include"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: /usr/bin/g++-14"
+		},
+		{
+			"type": "cppbuild",
+			"label": "C/C++: Link",
+			"command": "/usr/bin/g++-14",
+			"args": [
+				"-fdiagnostics-color=always",
+				"-g",
+				"${workspaceFolder}/*.o",
+				"-L",
+				"/usr/local/lib",
+				"-lraylib",
+				"-o",
+				"${workspaceFolder}/quadtree",
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: /usr/bin/g++-14"
+		}
+	]
+}

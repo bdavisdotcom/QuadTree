@@ -4,7 +4,7 @@
 #include <stack>
 #include <algorithm>
 
-Extents::Extents() : min(0, 0), max(0, 0)
+Extents::Extents() : min{0.0, 0.0}, max{0.0, 0.0}
 {
 }
 
