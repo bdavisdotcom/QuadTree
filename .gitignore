@@ -57,6 +57,12 @@ compile_commands.json
 *.log 
 *.bak 
 *.swp 
+*.exe
+
+# Build files
+*.o
+*.a
+quadtree
 
 # vcpkg
 vcpkg_installed/
