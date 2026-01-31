@@ -10,10 +10,11 @@ void drawTree(const QuadTree *quadTree)
 
     DrawRectangleLines(extents.min.x, extents.min.y, extents.max.x - extents.min.x, extents.max.y - extents.min.y, RED);
 
-    for (const Node &n : quadTree->getNodes())
+    const auto &nodes = quadTree->getNodes();
+    for (const std::shared_ptr<Node> &n : nodes)
     {
-        DrawRectangleRec(n.aabb.toRectangle(), n.id == 0 ? BLUE : quads.topLeft ? PURPLE
-                                                                                : GREEN); // PURPLE if node crosses quad boudaries
+        DrawRectangleRec(n->aabb.toRectangle(), n->id == 0 ? BLUE : quads.topLeft ? PURPLE
+                                                                                  : GREEN); // PURPLE if node crosses quad boudaries
     }
 
     if (quads.topLeft)
@@ -27,6 +28,11 @@ void drawTree(const QuadTree *quadTree)
 
 void testFind(int id, const std::vector<AABB> &objects, QuadTree *quadTree)
 {
+    if (id >= objects.size())
+    {
+        return;
+    }
+
     const auto aabb = objects.at(id);
     auto *qt = quadTree->findQuadContaingNodeIdByRect(id, aabb);
 
@@ -41,7 +47,7 @@ int main()
 {
     SetTraceLogLevel(LOG_ERROR);
 
-    const int NUMBER_OF_NODES = 400;
+    const int NUMBER_OF_NODES = 100;
     const int NODE_SIZE = 5;
     const int screenWidth = 800;
     const int screenHeight = 600;
@@ -58,9 +64,9 @@ int main()
         objects.push_back(AABB(Vector2{rect.x, rect.y}, Vector2{rect.width + rect.x, rect.height + rect.y}));
     }
 
-    InitWindow(screenWidth, screenHeight, "raylib window example");
+    InitWindow(screenWidth, screenHeight, "QuadTree example");
 
-    SetTargetFPS(60);
+    SetTargetFPS(10);
 
     float timeAccum = 0;
     int nodeAddIndex = 0;
@@ -80,15 +86,15 @@ int main()
 
         if (nodeAddIndex < NUMBER_OF_NODES)
         {
-            auto n = Node{nodeAddIndex, objects.at(nodeAddIndex)};
+            auto n = std::make_shared<Node>(nodeAddIndex, objects.at(nodeAddIndex));
             quadTree.insertNode(n);
             nodeAddIndex++;
-            if (nodeAddIndex >= NUMBER_OF_NODES)
+            if (nodeAddIndex == NUMBER_OF_NODES)
             {
                 doneBuildingTree = true;
-                testFind(50, objects, &quadTree);
-                testFind(11, objects, &quadTree);
-                testFind(0, objects, &quadTree);
+                // testFind(50, objects, &quadTree);
+                // testFind(11, objects, &quadTree);
+                // testFind(0, objects, &quadTree);
                 printf("\nDone building the tree.\n");
                 printf("\nPress space key to start removing...");
             }
@@ -96,8 +102,7 @@ int main()
 
         if (doneBuildingTree && nodeRemoveIndex > -1 && keyPressed == KEY_ENTER)
         {
-            auto r = &objects.at(nodeRemoveIndex);
-            bool res = quadTree.removeNode(nodeRemoveIndex, *r);
+            bool res = quadTree.removeNode(nodeRemoveIndex);
             nodeRemoveIndex--;
         }
 
@@ -128,6 +133,8 @@ int main()
             keyPressed = KEY_ENTER;
         }
     }
+
+    printf("\nTotal Node structs deleted: %d", Node::deleteCounter);
 
     CloseWindow();
 

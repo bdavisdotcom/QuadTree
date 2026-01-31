@@ -17,9 +17,19 @@ Rectangle AABB::toRectangle() const
     return Rectangle{.x = min.x, .y = min.y, .width = max.x - min.x, .height = max.y - min.y};
 }
 
+Node::Node(uint32_t id, const AABB &aabb, QuadTree *parent) : id(id), aabb(aabb), parent(parent)
+{
+}
+
+Node::~Node()
+{
+    // printf("Node id: %d dtor()", (int)id);
+    ++deleteCounter;
+}
+
 void Node::print() const
 {
-    printf("\nNode: id:%d x:%f y:%f w:%f h:%f", id, aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y);
+    printf("\nNode: id:%d x1:%f y1:%f x2:%f y2:%f", id, aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y);
 }
 
 QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
@@ -30,12 +40,12 @@ QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
                                                              nodes()
 {
     nodes.reserve(MAX_QUAD_NODES * 2);
-    id = QuadTree::nextId++;
+    _id = QuadTree::nextId++;
 }
 
 QuadTree::~QuadTree()
 {
-    printf("\n*** QuadTree dtor(%d) -- ", id);
+    printf("\n*** QuadTree dtor(%d) local nodes count: %d nodesMap count: %d", _id, (int)nodes.size(), (int)QuadTree::nodesMap.size());
     print();
 }
 
@@ -53,6 +63,11 @@ bool QuadTree::isLeaf() const
 bool QuadTree::isWithinBoundary(const AABB &aabb)
 {
     return aabb.min.x >= extents.min.x && aabb.min.x <= extents.max.x && aabb.min.y >= extents.min.y && aabb.min.y <= extents.max.y && aabb.max.x <= extents.max.x && aabb.max.y <= extents.max.y;
+}
+
+bool QuadTree::isPointWithinBoundary(const Vector2 &point)
+{
+    return point.x >= extents.min.x && point.x <= extents.max.y && point.y >= extents.min.y && point.y <= extents.max.y;
 }
 
 QuadTree *QuadTree::whichQuadContainsRect(const AABB &aabb)
@@ -85,7 +100,7 @@ QuadTree *QuadTree::whichQuadContainsRect(const AABB &aabb)
     return nullptr;
 }
 
-QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const AABB &aabb)
+QuadTree *QuadTree::findQuadContaingNodeIdByRect(uint32_t id, const AABB &aabb)
 {
     // is the node here in this nodes list?
     if (nodes.size() > 0)
@@ -116,24 +131,24 @@ QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const AABB &aabb)
 }
 
 // private child quad node inserter
-bool QuadTree::_insertNode(const Node &node)
+bool QuadTree::_insertNode(const std::shared_ptr<Node> &node)
 {
-    if (topLeft->isWithinBoundary(node.aabb))
+    if (topLeft->isWithinBoundary(node->aabb))
     {
         topLeft->insertNode(node);
         return true;
     }
-    if (topRight->isWithinBoundary(node.aabb))
+    if (topRight->isWithinBoundary(node->aabb))
     {
         topRight->insertNode(node);
         return true;
     }
-    if (botLeft->isWithinBoundary(node.aabb))
+    if (botLeft->isWithinBoundary(node->aabb))
     {
         botLeft->insertNode(node);
         return true;
     }
-    if (botRight->isWithinBoundary(node.aabb))
+    if (botRight->isWithinBoundary(node->aabb))
     {
         botRight->insertNode(node);
         return true;
@@ -142,13 +157,20 @@ bool QuadTree::_insertNode(const Node &node)
     return false;
 }
 
-bool QuadTree::insertNode(const Node &node)
+bool QuadTree::insertNode(const std::shared_ptr<Node> &node)
 {
-    // auto node = Node{.id = id, .aabb = aabb};
-
-    if (!isWithinBoundary(node.aabb))
+    if (!isWithinBoundary(node->aabb))
     {
         return false;
+    }
+
+    if (!QuadTree::nodesMap.contains(node->id))
+    {
+        QuadTree::nodesMap.insert({node->id, node});
+    }
+    else
+    {
+        QuadTree::nodesMap[node->id] = node;
     }
 
     // if this quad was already split, it's no longer a leaf node,
@@ -168,6 +190,7 @@ bool QuadTree::insertNode(const Node &node)
     // insert it and return
     if (nodes.size() < MAX_QUAD_NODES)
     {
+        node->parent = this;
         nodes.push_back(node);
         return true;
     }
@@ -178,9 +201,9 @@ bool QuadTree::insertNode(const Node &node)
     // subdivide this quad into 4 children...
     splitQuads();
 
-    auto cantMoveStack = std::stack<Node>();
+    auto cantMoveStack = std::stack<std::shared_ptr<Node>>();
 
-    for (const Node &moveNode : nodes)
+    for (const std::shared_ptr<Node> &moveNode : nodes)
     {
         if (!_insertNode(moveNode))
         {
@@ -211,7 +234,7 @@ bool QuadTree::insertNode(const Node &node)
     return true;
 }
 
-int QuadTree::findNodeIndexAtThisLevel(int id)
+int QuadTree::findNodeIndexAtThisLevel(uint32_t id)
 {
     if (nodes.size() == 0)
     {
@@ -220,8 +243,8 @@ int QuadTree::findNodeIndexAtThisLevel(int id)
 
     auto it = std::find_if(nodes.begin(),
                            nodes.end(),
-                           [id](const Node &n)
-                           { return n.id == id; });
+                           [id](const std::shared_ptr<Node> &n)
+                           { return n->id == id; });
 
     if (it == nodes.end())
     {
@@ -256,7 +279,7 @@ void QuadTree::_collapseChildQuads()
     botRight.reset();
 }
 
-bool QuadTree::removeNode(int id, const AABB &searchAABB)
+bool QuadTree::removeNode(uint32_t id)
 {
     int index = findNodeIndexAtThisLevel(id);
     // not found and we haven't subdivided this quad yet
@@ -270,8 +293,9 @@ bool QuadTree::removeNode(int id, const AABB &searchAABB)
     {
         //  swap and pop
         std::swap(nodes[index], nodes.back());
+        nodes.back()->parent = nullptr;
         nodes.pop_back();
-        return true;
+        return QuadTree::nodesMap.erase(id) == 1;
     }
 
     // if we get here, we didn't find it on this level
@@ -283,8 +307,15 @@ bool QuadTree::removeNode(int id, const AABB &searchAABB)
         return false;
     }
 
+    if (!QuadTree::nodesMap.contains(id))
+    {
+        return false;
+    }
+
+    const auto &node = QuadTree::nodesMap[id];
+
     // find which child should contain the rect
-    auto *quadTree = whichQuadContainsRect(searchAABB);
+    auto *quadTree = whichQuadContainsRect(node->aabb);
     if (!quadTree)
     {
         // couldn't find a quad that contains this rect, so bail
@@ -292,9 +323,12 @@ bool QuadTree::removeNode(int id, const AABB &searchAABB)
     }
 
     // remove the node from the child quad we found above...
-    quadTree->removeNode(id, searchAABB);
+    if (!quadTree->removeNode(id))
+    {
+        return false;
+    }
 
-    // after this point we already return true, since the node was already removed
+    // after this point we've already returned true from within, since the node was already removed
     // the rest of the steps are for optimization
 
     // check if we have to rebalance this QuadTree
@@ -313,6 +347,29 @@ bool QuadTree::removeNode(int id, const AABB &searchAABB)
     _collapseChildQuads();
 
     return true;
+}
+
+bool QuadTree::moveNode(uint32_t id, const Vector2 &newPosition)
+{
+    if (!QuadTree::nodesMap.contains(id))
+    {
+        return false;
+    }
+    if (!isPointWithinBoundary(newPosition))
+    {
+        return false;
+    }
+
+    auto &n = QuadTree::nodesMap[id];
+
+    if (!removeNode(id))
+    {
+        return false;
+    }
+
+    n->aabb.min = newPosition;
+
+    return insertNode(n);
 }
 
 void QuadTree::splitQuads()
@@ -347,7 +404,7 @@ Quads QuadTree::getQuads() const
     return quads;
 }
 
-const std::vector<Node> &QuadTree::getNodes() const
+const std::vector<std::shared_ptr<Node>> &QuadTree::getNodes() const
 {
     return nodes;
 }
