@@ -23,7 +23,7 @@ Node::Node(uint32_t id, const AABB &aabb, QuadTree *parent) : id(id), aabb(aabb)
 
 Node::~Node()
 {
-    // printf("Node id: %d dtor()", (int)id);
+    printf("\nNode id: %d dtor()", (int)id);
     ++deleteCounter;
 }
 
@@ -45,8 +45,8 @@ QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
 
 QuadTree::~QuadTree()
 {
-    printf("\n*** QuadTree dtor(%d) local nodes count: %d nodesMap count: %d", _id, (int)nodes.size(), (int)QuadTree::nodesMap.size());
-    print();
+    printf("\n*** QuadTree dtor(%d)", _id);
+    // print();
 }
 
 bool QuadTree::isLeaf() const
@@ -67,7 +67,7 @@ bool QuadTree::isWithinBoundary(const AABB &aabb)
 
 bool QuadTree::isPointWithinBoundary(const Vector2 &point)
 {
-    return point.x >= extents.min.x && point.x <= extents.max.y && point.y >= extents.min.y && point.y <= extents.max.y;
+    return point.x >= extents.min.x && point.x <= extents.max.x && point.y >= extents.min.y && point.y <= extents.max.y;
 }
 
 QuadTree *QuadTree::whichQuadContainsRect(const AABB &aabb)
@@ -259,6 +259,16 @@ int QuadTree::getNodeCount()
     return nodes.size();
 }
 
+size_t QuadTree::getNodeCountRecursive()
+{
+    if (isLeaf())
+    {
+        return nodes.size();
+    }
+
+    return nodes.size() + topLeft->getNodeCountRecursive() + topRight->getNodeCountRecursive() + botLeft->getNodeCountRecursive() + botRight->getNodeCountRecursive();
+}
+
 void QuadTree::_collapseChildQuads()
 {
     // copy nodes from child quads
@@ -279,6 +289,30 @@ void QuadTree::_collapseChildQuads()
     botRight.reset();
 }
 
+bool QuadTree::checkAndAdjustQuads()
+{
+    if (isLeaf())
+    {
+        return false;
+    }
+
+    // check if we have to rebalance this QuadTree
+    if (nodes.size() + topLeft->getNodeCount() + topRight->getNodeCount() + botLeft->getNodeCount() + botRight->getNodeCount() > MAX_QUAD_NODES)
+    {
+        return false; // no, we can't collapse the child quads...
+    }
+
+    // if any of the child quads also have child quads, then we cannot collapse the children
+    if (topLeft->isLeaf() && topRight->isLeaf() && botLeft->isLeaf() && botRight->isLeaf())
+    {
+        // if we reach this point, we *can* collapse the child quads...
+        _collapseChildQuads();
+        return true;
+    }
+
+    return false;
+}
+
 bool QuadTree::removeNode(uint32_t id)
 {
     int index = findNodeIndexAtThisLevel(id);
@@ -289,13 +323,15 @@ bool QuadTree::removeNode(uint32_t id)
     }
 
     // found it at this level
-    if (index >= 0)
+    if (index > -1)
     {
         //  swap and pop
         std::swap(nodes[index], nodes.back());
         nodes.back()->parent = nullptr;
         nodes.pop_back();
-        return QuadTree::nodesMap.erase(id) == 1;
+        QuadTree::nodesMap.erase(id);
+        checkAndAdjustQuads();
+        return true;
     }
 
     // if we get here, we didn't find it on this level
@@ -331,43 +367,32 @@ bool QuadTree::removeNode(uint32_t id)
     // after this point we've already returned true from within, since the node was already removed
     // the rest of the steps are for optimization
 
-    // check if we have to rebalance this QuadTree
-    if (nodes.size() + topLeft->getNodeCount() + topRight->getNodeCount() + botLeft->getNodeCount() + botRight->getNodeCount() >= MAX_QUAD_NODES)
-    {
-        return true; // no, we can't collapse the child quads...
-    }
-
-    // if any of the child quads also have child quads, then we cannot collapse the children
-    if (!topLeft->isLeaf() || !topRight->isLeaf() || !botLeft->isLeaf() || !botRight->isLeaf())
-    {
-        return true;
-    }
-
-    // if we reach this point, we *can* collapse the child quads...
-    _collapseChildQuads();
+    checkAndAdjustQuads();
 
     return true;
 }
 
-bool QuadTree::moveNode(uint32_t id, const Vector2 &newPosition)
+bool QuadTree::moveNode(uint32_t id, const AABB &newAABB)
 {
-    if (!QuadTree::nodesMap.contains(id))
+    if (!isPointWithinBoundary(newAABB.min))
     {
         return false;
     }
-    if (!isPointWithinBoundary(newPosition))
+
+    if (!QuadTree::nodesMap.contains(id))
     {
-        return false;
+        QuadTree::nodesMap.insert({id, std::make_shared<Node>(id, newAABB, nullptr)});
     }
 
     auto &n = QuadTree::nodesMap[id];
 
-    if (!removeNode(id))
-    {
-        return false;
-    }
+    removeNode(id);
+    // if (!removeNode(id))
+    // {
+    //     return false;
+    // }
 
-    n->aabb.min = newPosition;
+    n->aabb = newAABB;
 
     return insertNode(n);
 }

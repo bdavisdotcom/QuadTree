@@ -5,7 +5,7 @@
 #include <vector>
 #include "raylib.h"
 
-const int MAX_QUAD_NODES = 8;
+const int MAX_QUAD_NODES = 6;
 
 struct AABB
 {
@@ -46,7 +46,7 @@ public:
     bool isPointWithinBoundary(const Vector2 &point);
     bool insertNode(const std::shared_ptr<Node> &node);
     bool removeNode(uint32_t);
-    bool moveNode(uint32_t, const Vector2 &newPosition);
+    bool moveNode(uint32_t id, const AABB &newAABB);
     int findNodeIndexAtThisLevel(uint32_t id);
     bool isLeaf() const;
     void print();
@@ -66,6 +66,9 @@ public:
     const std::vector<std::shared_ptr<Node>> &getNodes() const;
 
     int getNodeCount();
+    size_t getNodeCountRecursive();
+
+    bool checkAndAdjustQuads();
 
 private:
     AABB extents;
