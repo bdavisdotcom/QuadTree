@@ -7,10 +7,12 @@
 
 const int MAX_QUAD_NODES = 8;
 
-struct Extents
+struct AABB
 {
-    Extents();
-    Extents(Vector2 min, Vector2 max);
+    AABB();
+    AABB(const Vector2 &min, const Vector2 &max);
+    Rectangle toRectangle() const;
+
     Vector2 min;
     Vector2 max;
 };
@@ -18,7 +20,7 @@ struct Extents
 struct Node
 {
     int id;
-    Rectangle rect;
+    AABB aabb;
 
     void print() const;
 };
@@ -32,22 +34,22 @@ public:
     QuadTree(const Vector2 &min, const Vector2 &max);
     ~QuadTree();
 
-    bool isWithinBoundary(const Rectangle &rect);
+    bool isWithinBoundary(const AABB &aabb);
     bool insertNode(const Node &node);
-    bool removeNode(int id, const Rectangle &searchRect);
+    bool removeNode(int id, const AABB &searchAABB);
     int findNodeIndexAtThisLevel(int id);
     bool isLeaf() const;
     void print();
 
     // returns which Quad has extents (at this current level) which contain the supplied rectangle. Nonrecursive.
-    QuadTree *whichQuadContainsRect(const Rectangle &rect);
+    QuadTree *whichQuadContainsRect(const AABB &aabb);
 
     // find the actual Quad that has extents that contain the supplied rectangle
     // AND which also contains the node (by the node's id) in the nodes list
     // this recursively searches down the tree
-    QuadTree *findQuadContaingNodeIdByRect(int id, const Rectangle &rect);
+    QuadTree *findQuadContaingNodeIdByRect(int id, const AABB &aabb);
 
-    const Extents &getExtents() const;
+    const AABB &getAABB() const;
 
     Quads getQuads() const;
 
@@ -56,7 +58,7 @@ public:
     int getNodeCount();
 
 private:
-    Extents extents;
+    AABB extents;
     std::unique_ptr<QuadTree> topLeft;
     std::unique_ptr<QuadTree> topRight;
     std::unique_ptr<QuadTree> botRight;
@@ -66,9 +68,10 @@ private:
     bool _insertNode(const Node &node);
     void _collapseChildQuads();
 
-    int id;
+    uint32_t id;
 
-    static int nextId;
+    inline static uint32_t nextId = 0;
+    inline static std::map<uint32_t, std::shared_ptr<AABB>> _nodes = std::map<uint32_t, std::shared_ptr<AABB>>();
 };
 
 struct Quads

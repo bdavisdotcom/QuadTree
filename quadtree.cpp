@@ -4,20 +4,23 @@
 #include <stack>
 #include <algorithm>
 
-Extents::Extents() : min{0.0, 0.0}, max{0.0, 0.0}
+AABB::AABB() : min{0.0, 0.0}, max{0.0, 0.0}
 {
 }
 
-Extents::Extents(Vector2 min, Vector2 max) : min(min), max(max)
+AABB::AABB(const Vector2 &min, const Vector2 &max) : min(min), max(max)
 {
+}
+
+Rectangle AABB::toRectangle() const
+{
+    return Rectangle{.x = min.x, .y = min.y, .width = max.x - min.x, .height = max.y - min.y};
 }
 
 void Node::print() const
 {
-    printf("\nNode: id:%d x:%f y:%f w:%f h:%f", id, rect.x, rect.y, rect.width, rect.height);
+    printf("\nNode: id:%d x:%f y:%f w:%f h:%f", id, aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y);
 }
-
-int QuadTree::nextId = 0;
 
 QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
                                                              topLeft(std::unique_ptr<QuadTree>()),
@@ -47,34 +50,34 @@ bool QuadTree::isLeaf() const
     return true;
 }
 
-bool QuadTree::isWithinBoundary(const Rectangle &rect)
+bool QuadTree::isWithinBoundary(const AABB &aabb)
 {
-    return rect.x >= extents.min.x && rect.x <= extents.max.x && rect.y >= extents.min.y && rect.y <= extents.max.y && rect.x + rect.width <= extents.max.x && rect.y + rect.height <= extents.max.y;
+    return aabb.min.x >= extents.min.x && aabb.min.x <= extents.max.x && aabb.min.y >= extents.min.y && aabb.min.y <= extents.max.y && aabb.max.x <= extents.max.x && aabb.max.y <= extents.max.y;
 }
 
-QuadTree *QuadTree::whichQuadContainsRect(const Rectangle &rect)
+QuadTree *QuadTree::whichQuadContainsRect(const AABB &aabb)
 {
     if (isLeaf())
     {
         return nullptr;
     }
 
-    if (topLeft->isWithinBoundary(rect))
+    if (topLeft->isWithinBoundary(aabb))
     {
         return topLeft.get();
     }
 
-    if (topRight->isWithinBoundary(rect))
+    if (topRight->isWithinBoundary(aabb))
     {
         return topRight.get();
     }
 
-    if (botLeft->isWithinBoundary(rect))
+    if (botLeft->isWithinBoundary(aabb))
     {
         return botLeft.get();
     }
 
-    if (botRight->isWithinBoundary(rect))
+    if (botRight->isWithinBoundary(aabb))
     {
         return botRight.get();
     }
@@ -82,7 +85,7 @@ QuadTree *QuadTree::whichQuadContainsRect(const Rectangle &rect)
     return nullptr;
 }
 
-QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
+QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const AABB &aabb)
 {
     // is the node here in this nodes list?
     if (nodes.size() > 0)
@@ -101,7 +104,7 @@ QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
     }
 
     // find out which quad potentially contains the node id passed
-    auto *quadTree = whichQuadContainsRect(rect);
+    auto *quadTree = whichQuadContainsRect(aabb);
     if (!quadTree)
     {
         return nullptr;
@@ -109,28 +112,28 @@ QuadTree *QuadTree::findQuadContaingNodeIdByRect(int id, const Rectangle &rect)
 
     quadTree->print();
 
-    return quadTree->findQuadContaingNodeIdByRect(id, rect);
+    return quadTree->findQuadContaingNodeIdByRect(id, aabb);
 }
 
 // private child quad node inserter
 bool QuadTree::_insertNode(const Node &node)
 {
-    if (topLeft->isWithinBoundary(node.rect))
+    if (topLeft->isWithinBoundary(node.aabb))
     {
         topLeft->insertNode(node);
         return true;
     }
-    if (topRight->isWithinBoundary(node.rect))
+    if (topRight->isWithinBoundary(node.aabb))
     {
         topRight->insertNode(node);
         return true;
     }
-    if (botLeft->isWithinBoundary(node.rect))
+    if (botLeft->isWithinBoundary(node.aabb))
     {
         botLeft->insertNode(node);
         return true;
     }
-    if (botRight->isWithinBoundary(node.rect))
+    if (botRight->isWithinBoundary(node.aabb))
     {
         botRight->insertNode(node);
         return true;
@@ -141,12 +144,9 @@ bool QuadTree::_insertNode(const Node &node)
 
 bool QuadTree::insertNode(const Node &node)
 {
-    if (node.id < 0)
-    {
-        return false;
-    }
+    // auto node = Node{.id = id, .aabb = aabb};
 
-    if (!isWithinBoundary(node.rect))
+    if (!isWithinBoundary(node.aabb))
     {
         return false;
     }
@@ -256,7 +256,7 @@ void QuadTree::_collapseChildQuads()
     botRight.reset();
 }
 
-bool QuadTree::removeNode(int id, const Rectangle &searchRect)
+bool QuadTree::removeNode(int id, const AABB &searchAABB)
 {
     int index = findNodeIndexAtThisLevel(id);
     // not found and we haven't subdivided this quad yet
@@ -284,7 +284,7 @@ bool QuadTree::removeNode(int id, const Rectangle &searchRect)
     }
 
     // find which child should contain the rect
-    auto *quadTree = whichQuadContainsRect(searchRect);
+    auto *quadTree = whichQuadContainsRect(searchAABB);
     if (!quadTree)
     {
         // couldn't find a quad that contains this rect, so bail
@@ -292,7 +292,7 @@ bool QuadTree::removeNode(int id, const Rectangle &searchRect)
     }
 
     // remove the node from the child quad we found above...
-    quadTree->removeNode(id, searchRect);
+    quadTree->removeNode(id, searchAABB);
 
     // after this point we already return true, since the node was already removed
     // the rest of the steps are for optimization
@@ -352,7 +352,7 @@ const std::vector<Node> &QuadTree::getNodes() const
     return nodes;
 }
 
-const Extents &QuadTree::getExtents() const
+const AABB &QuadTree::getAABB() const
 {
     return extents;
 }

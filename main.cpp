@@ -5,15 +5,15 @@
 
 void drawTree(const QuadTree *quadTree)
 {
-    auto extents = quadTree->getExtents();
+    auto extents = quadTree->getAABB();
     auto quads = quadTree->getQuads();
 
     DrawRectangleLines(extents.min.x, extents.min.y, extents.max.x - extents.min.x, extents.max.y - extents.min.y, RED);
 
     for (const Node &n : quadTree->getNodes())
     {
-        DrawRectangleRec(n.rect, n.id == 0 ? BLUE : quads.topLeft ? PURPLE
-                                                                  : GREEN); // PURPLE if node crosses quad boudaries
+        DrawRectangleRec(n.aabb.toRectangle(), n.id == 0 ? BLUE : quads.topLeft ? PURPLE
+                                                                                : GREEN); // PURPLE if node crosses quad boudaries
     }
 
     if (quads.topLeft)
@@ -25,10 +25,10 @@ void drawTree(const QuadTree *quadTree)
     }
 }
 
-void testFind(int id, const std::vector<Rectangle> &objects, QuadTree *quadTree)
+void testFind(int id, const std::vector<AABB> &objects, QuadTree *quadTree)
 {
-    const auto rect = objects.at(id);
-    auto *qt = quadTree->findQuadContaingNodeIdByRect(id, rect);
+    const auto aabb = objects.at(id);
+    auto *qt = quadTree->findQuadContaingNodeIdByRect(id, aabb);
 
     printf("\nid: %d found? %s", id, qt != nullptr ? "true" : "false");
     if (qt)
@@ -48,14 +48,14 @@ int main()
 
     auto quadTree = QuadTree(Vector2{0, 0}, Vector2{screenWidth, screenHeight});
 
-    auto objects = std::vector<Rectangle>();
+    auto objects = std::vector<AABB>();
 
     objects.reserve(NUMBER_OF_NODES);
 
     for (int i = 0; i < NUMBER_OF_NODES; i++)
     {
         auto rect = Rectangle{(float)GetRandomValue(0, 800), (float)GetRandomValue(0, 600), NODE_SIZE, NODE_SIZE};
-        objects.push_back(rect);
+        objects.push_back(AABB(Vector2{rect.x, rect.y}, Vector2{rect.width + rect.x, rect.height + rect.y}));
     }
 
     InitWindow(screenWidth, screenHeight, "raylib window example");
@@ -86,6 +86,9 @@ int main()
             if (nodeAddIndex >= NUMBER_OF_NODES)
             {
                 doneBuildingTree = true;
+                testFind(50, objects, &quadTree);
+                testFind(11, objects, &quadTree);
+                testFind(0, objects, &quadTree);
                 printf("\nDone building the tree.\n");
                 printf("\nPress space key to start removing...");
             }
@@ -125,10 +128,6 @@ int main()
             keyPressed = KEY_ENTER;
         }
     }
-
-    testFind(50, objects, &quadTree);
-    testFind(11, objects, &quadTree);
-    testFind(0, objects, &quadTree);
 
     CloseWindow();
 
