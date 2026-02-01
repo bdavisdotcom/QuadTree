@@ -5,7 +5,7 @@
 #include <vector>
 #include "raylib.h"
 
-const int MAX_QUAD_NODES = 6;
+const int MAX_QUAD_NODES = 4;
 
 struct AABB
 {

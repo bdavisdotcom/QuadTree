@@ -23,13 +23,13 @@ Node::Node(uint32_t id, const AABB &aabb, QuadTree *parent) : id(id), aabb(aabb)
 
 Node::~Node()
 {
-    printf("\nNode id: %d dtor()", (int)id);
+    printf("\n  Node id: %d dtor()", (int)id);
     ++deleteCounter;
 }
 
 void Node::print() const
 {
-    printf("\nNode: id:%d x1:%f y1:%f x2:%f y2:%f", id, aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y);
+    printf("\n  Node: id:%d x1:%f y1:%f x2:%f y2:%f", id, aabb.min.x, aabb.min.y, aabb.max.x, aabb.max.y);
 }
 
 QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
@@ -45,8 +45,7 @@ QuadTree::QuadTree(const Vector2 &min, const Vector2 &max) : extents(min, max),
 
 QuadTree::~QuadTree()
 {
-    printf("\n*** QuadTree dtor(%d)", _id);
-    // print();
+    printf("\nQuadTree dtor(%d)", _id);
 }
 
 bool QuadTree::isLeaf() const
@@ -374,7 +373,7 @@ bool QuadTree::removeNode(uint32_t id)
 
 bool QuadTree::moveNode(uint32_t id, const AABB &newAABB)
 {
-    if (!isPointWithinBoundary(newAABB.min))
+    if (!isWithinBoundary(newAABB))
     {
         return false;
     }
@@ -387,10 +386,6 @@ bool QuadTree::moveNode(uint32_t id, const AABB &newAABB)
     auto &n = QuadTree::nodesMap[id];
 
     removeNode(id);
-    // if (!removeNode(id))
-    // {
-    //     return false;
-    // }
 
     n->aabb = newAABB;
 
