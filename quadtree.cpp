@@ -392,16 +392,26 @@ bool QuadTree::moveNode(uint32_t id, const AABB &newAABB)
     return insertNode(n);
 }
 
-void QuadTree::splitQuads()
+bool QuadTree::splitQuads()
 {
-    Vector2 midTop = Vector2{extents.min.x + ((extents.max.x - extents.min.x) / 2), extents.min.y};
-    Vector2 midMid = Vector2{midTop.x, extents.min.y + ((extents.max.y - extents.min.y) / 2)};
+    const float splitWidth = (extents.max.x - extents.min.x) / 2;
+    const float splitHeight = (extents.max.y - extents.min.y) / 2;
+
+    if (splitWidth <= 1.0f || splitHeight <= 1.0f)
+    {
+        return false;
+    }
+
+    Vector2 midTop = Vector2{extents.min.x + splitWidth, extents.min.y};
+    Vector2 midMid = Vector2{midTop.x, extents.min.y + splitHeight};
     Vector2 midBot = Vector2{midTop.x, extents.max.y};
 
     topLeft.reset(new QuadTree(extents.min, midMid));
     topRight.reset(new QuadTree(midTop, Vector2{extents.max.x, midMid.y}));
     botLeft.reset(new QuadTree(Vector2{extents.min.x, midMid.y}, midBot));
     botRight.reset(new QuadTree(midMid, extents.max));
+
+    return true;
 }
 
 void QuadTree::print()

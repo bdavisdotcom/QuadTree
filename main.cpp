@@ -4,7 +4,7 @@
 #include <vector>
 #include <iostream>
 
-const int NUMBER_OF_NODES = 150;
+const int NUMBER_OF_NODES = 50;
 const int NODE_SIZE = 5;
 const int screenWidth = 800;
 const int screenHeight = 600;

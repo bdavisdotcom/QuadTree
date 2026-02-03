@@ -5,7 +5,7 @@
 #include <vector>
 #include "raylib.h"
 
-const int MAX_QUAD_NODES = 4;
+const int MAX_QUAD_NODES = 2;
 
 struct AABB
 {
@@ -72,16 +72,17 @@ public:
 
 private:
     AABB extents;
+    uint32_t _id;
+
     std::unique_ptr<QuadTree> topLeft;
     std::unique_ptr<QuadTree> topRight;
     std::unique_ptr<QuadTree> botRight;
     std::unique_ptr<QuadTree> botLeft;
     std::vector<std::shared_ptr<Node>> nodes;
-    void splitQuads();
+
+    bool splitQuads();
     bool _insertNode(const std::shared_ptr<Node> &node);
     void _collapseChildQuads();
-
-    uint32_t _id;
 
     inline static uint32_t nextId = 0;
     inline static std::map<uint32_t, std::shared_ptr<Node>> nodesMap = std::map<uint32_t, std::shared_ptr<Node>>();
