@@ -1,0 +1,4 @@
+PointerAlignment: Left
+ReferenceAlighment: Left
+AllowShortFUnctionsOnASingleLine: true
+BreakBeforeBraces: Allman
