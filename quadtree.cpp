@@ -14,12 +14,15 @@ Rectangle AABB::toRectangle() const
       .x = min.x, .y = min.y, .width = max.x - min.x, .height = max.y - min.y};
 }
 
-bool AABB::overlaps(const AABB& aabb)
+bool AABB::overlaps(const AABB& aabb) const
 {
-  return aabb.min.x >= min.x && aabb.min.x <= max.x && aabb.min.y >= min.y &&
-             aabb.min.y <= max.y ||
-         aabb.max.x >= min.x && aabb.max.x <= max.x && aabb.max.y >= min.y &&
-             aabb.max.y <= max.y;
+  return !(aabb.max.x < min.x || aabb.min.x > max.x || aabb.max.y < min.y ||
+           aabb.min.y > max.y);
+}
+
+void AABB::print() const
+{
+  printf("  AABB: x1:%f y1:%f x2:%f y2:%f", min.x, min.y, max.x, max.y);
 }
 
 Node::Node(uint32_t id, const AABB& aabb, QuadTree* parent)
@@ -262,7 +265,7 @@ int QuadTree::findNodeIndexAtThisLevel(uint32_t id)
   return std::distance(nodes.begin(), it);
 }
 
-int QuadTree::getNodeCount() { return nodes.size(); }
+size_t QuadTree::getNodeCount() { return nodes.size(); }
 
 size_t QuadTree::getNodeCountRecursive()
 {
@@ -461,16 +464,20 @@ void QuadTree::getCollisions(uint32_t id, std::vector<uint32_t>& collisions)
   }
 
   const AABB& aabb = nodesMap[id]->aabb;
-  getCollisions(aabb, collisions);
+
+  getCollisions(id, aabb, collisions);
 }
 
-void QuadTree::getCollisions(const AABB& aabb,
+void QuadTree::getCollisions(uint32_t id, const AABB& aabb,
                              std::vector<uint32_t>& collisions)
 {
   for (const auto& n : nodes)
   {
-    if (n->aabb.overlaps(aabb))
+    if (id != n->id && aabb.overlaps(n->aabb))
     {
+      printf("\n collision...");
+      aabb.print();
+      n->aabb.print();
       collisions.push_back(n->id);
     }
   }
@@ -482,19 +489,19 @@ void QuadTree::getCollisions(const AABB& aabb,
 
   if (topLeft->isWithinBoundary(aabb))
   {
-    return topLeft->getCollisions(aabb, collisions);
+    return topLeft->getCollisions(id, aabb, collisions);
   }
   if (topRight->isWithinBoundary(aabb))
   {
-    return topRight->getCollisions(aabb, collisions);
+    return topRight->getCollisions(id, aabb, collisions);
   }
   if (botLeft->isWithinBoundary(aabb))
   {
-    return botLeft->getCollisions(aabb, collisions);
+    return botLeft->getCollisions(id, aabb, collisions);
   }
   if (botRight->isWithinBoundary(aabb))
   {
-    return botRight->getCollisions(aabb, collisions);
+    return botRight->getCollisions(id, aabb, collisions);
   }
 }
 

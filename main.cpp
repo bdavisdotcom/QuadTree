@@ -9,24 +9,39 @@ const int NODE_SIZE = 5;
 const int screenWidth = 800;
 const int screenHeight = 600;
 
+std::vector<uint32_t> collisions = std::vector<uint32_t>();
+
 void drawTree(const QuadTree* quadTree)
 {
   auto extents = quadTree->getAABB();
   auto quads = quadTree->getQuads();
 
-  DrawRectangleLines(extents.min.x, extents.min.y,
-                     extents.max.x - extents.min.x,
-                     extents.max.y - extents.min.y, RED);
+  bool theNode = false;
 
   const auto& nodes = quadTree->getNodes();
   for (const std::shared_ptr<Node>& n : nodes)
   {
+    theNode = n->id == 0;
+
     DrawRectangleRec(n->aabb.toRectangle(),
                      n->id == 0 ? BLUE
                      : quads.topLeft
                          ? PURPLE
                          : GREEN); // PURPLE if node crosses quad boudaries
+
+    if (theNode)
+    {
+      if (n->parent != nullptr)
+      {
+        AABB aabb = n->aabb;
+        n->parent->getCollisions(n->id, collisions);
+      }
+    }
   }
+
+  DrawRectangleLines(extents.min.x, extents.min.y,
+                     extents.max.x - extents.min.x,
+                     extents.max.y - extents.min.y, theNode ? BLACK : RED);
 
   if (quads.topLeft)
   {
@@ -112,13 +127,15 @@ int main()
 
   SetTargetFPS(60);
 
+  collisions.reserve(50);
+
   float timeAccum = 0;
   int nodeAddIndex = 0;
   int nodeRemoveIndex = objects.size() - 1;
   bool doneBuildingTree = false;
   bool moveMode = false;
   bool done = false;
-  Vector2 velocity = Vector2{2.0f, 2.0f};
+  Vector2 velocity = Vector2{1.0f, 1.0f};
   int keyPressed = 0;
 
   printf("\nobject count: %d", (int)objects.size());
@@ -180,6 +197,8 @@ int main()
     drawTree(quadTree);
 
     EndDrawing();
+
+    collisions.clear();
 
     if (timeAccum >= 1.0)
     {

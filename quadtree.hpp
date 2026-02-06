@@ -12,7 +12,8 @@ struct AABB
   AABB();
   AABB(const Vector2& min, const Vector2& max);
   Rectangle toRectangle() const;
-  bool overlaps(const AABB& aabb);
+  bool overlaps(const AABB& aabb) const;
+  void print() const;
   Vector2 min;
   Vector2 max;
 };
@@ -66,12 +67,14 @@ public:
 
   const std::vector<std::shared_ptr<Node>>& getNodes() const;
 
-  int getNodeCount();
+  size_t getNodeCount();
   size_t getNodeCountRecursive();
 
   bool checkAndAdjustQuads();
 
   void getCollisions(uint32_t id, std::vector<uint32_t>& collisions);
+  void getCollisions(uint32_t id, const AABB& aabb,
+                     std::vector<uint32_t>& collisions);
 
 private:
   AABB extents;
@@ -90,8 +93,6 @@ private:
   inline static uint32_t nextId = 0;
   inline static std::map<uint32_t, std::shared_ptr<Node>> nodesMap =
       std::map<uint32_t, std::shared_ptr<Node>>();
-
-  void getCollisions(const AABB& aabb, std::vector<uint32_t>& collisions);
 };
 
 struct Quads
