@@ -1,46 +1,9 @@
-#include "quadtree.hpp"
-#include "raymath.h"
 #include <algorithm>
 #include <stack>
 #include <stdio.h>
 
-AABB::AABB() : min{0.0, 0.0}, max{0.0, 0.0} {}
-
-AABB::AABB(const Vector2& min, const Vector2& max) : min(min), max(max) {}
-
-Rectangle AABB::toRectangle() const
-{
-  return Rectangle{
-      .x = min.x, .y = min.y, .width = max.x - min.x, .height = max.y - min.y};
-}
-
-bool AABB::overlaps(const AABB& aabb) const
-{
-  return !(aabb.max.x < min.x || aabb.min.x > max.x || aabb.max.y < min.y ||
-           aabb.min.y > max.y);
-}
-
-void AABB::print() const
-{
-  printf("  AABB: x1:%f y1:%f x2:%f y2:%f", min.x, min.y, max.x, max.y);
-}
-
-Node::Node(uint32_t id, const AABB& aabb, QuadTree* parent)
-    : id(id), aabb(aabb), parent(parent)
-{
-}
-
-Node::~Node()
-{
-  printf("\n  Node id: %d dtor()", (int)id);
-  ++deleteCounter;
-}
-
-void Node::print() const
-{
-  printf("\n  Node: id:%d x1:%f y1:%f x2:%f y2:%f", id, aabb.min.x, aabb.min.y,
-         aabb.max.x, aabb.max.y);
-}
+#include "quadtree.hpp"
+#include "raymath.h"
 
 QuadTree::QuadTree(const Vector2& min, const Vector2& max)
     : extents(min, max), topLeft(std::unique_ptr<QuadTree>()),
@@ -475,9 +438,6 @@ void QuadTree::getCollisions(uint32_t id, const AABB& aabb,
   {
     if (id != n->id && aabb.overlaps(n->aabb))
     {
-      printf("\n collision...");
-      aabb.print();
-      n->aabb.print();
       collisions.push_back(n->id);
     }
   }

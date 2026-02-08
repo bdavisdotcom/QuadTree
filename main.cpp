@@ -1,8 +1,9 @@
+#include <iostream>
+#include <vector>
+
 #include "quadtree.hpp"
 #include "raylib.h"
 #include "raymath.h"
-#include <iostream>
-#include <vector>
 
 const int NUMBER_OF_NODES = 50;
 const int NODE_SIZE = 5;

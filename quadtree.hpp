@@ -1,38 +1,14 @@
 #pragma once
 
-#include "raylib.h"
 #include <map>
 #include <memory>
 #include <vector>
 
+#include "aabb.hpp"
+#include "node.hpp"
+#include "raylib.h"
+
 const int MAX_QUAD_NODES = 2;
-
-struct AABB
-{
-  AABB();
-  AABB(const Vector2& min, const Vector2& max);
-  Rectangle toRectangle() const;
-  bool overlaps(const AABB& aabb) const;
-  void print() const;
-  Vector2 min;
-  Vector2 max;
-};
-
-class QuadTree;
-
-struct Node
-{
-  Node() = delete;
-  Node(uint32_t id, const AABB& aabb, QuadTree* parent = nullptr);
-  ~Node();
-  uint32_t id;
-  AABB aabb;
-  QuadTree* parent;
-
-  void print() const;
-
-  static inline int deleteCounter = 0;
-};
 
 struct Quads;
 
