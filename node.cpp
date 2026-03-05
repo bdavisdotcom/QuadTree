@@ -5,4 +5,4 @@ Node::Node(uint32_t id, const AABB& aabb, QuadTree* parent)
 {
 }
 
-Node::~Node() { ++deleteCounter; }
+Node::~Node() {}

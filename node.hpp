@@ -13,6 +13,4 @@ struct Node
   uint32_t id;
   AABB aabb;
   QuadTree* parent;
-
-  static inline int deleteCounter = 0;
 };

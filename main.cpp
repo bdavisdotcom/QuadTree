@@ -72,39 +72,13 @@ void testFind(int id, const std::vector<AABB>& objects, QuadTree* quadTree)
 
 const AABB getRandomAABB()
 {
-  auto rx = (float)GetRandomValue(0, screenWidth);
-  auto ry = (float)GetRandomValue(0, screenHeight);
+  auto rx = (float)GetRandomValue(0, screenWidth - 1);
+  auto ry = (float)GetRandomValue(0, screenHeight - 1);
   return AABB(Vector2{rx, ry}, Vector2{rx + NODE_SIZE, ry + NODE_SIZE});
 }
 
 void makeData(std::vector<AABB>& objects)
 {
-  // float x = 100;
-  // float y = 100;
-
-  // objects.push_back(AABB(Vector2{x, y}, Vector2{x + NODE_SIZE, y +
-  // NODE_SIZE}));
-
-  // x = 50;
-  // y = 50;
-  // objects.push_back(AABB(Vector2{x, y}, Vector2{x + NODE_SIZE, y +
-  // NODE_SIZE}));
-
-  // x = 700;
-  // y = 50;
-  // objects.push_back(AABB(Vector2{x, y}, Vector2{x + NODE_SIZE, y +
-  // NODE_SIZE}));
-
-  // x = 50;
-  // y = 500;
-  // objects.push_back(AABB(Vector2{x, y}, Vector2{x + NODE_SIZE, y +
-  // NODE_SIZE}));
-
-  // x = 700;
-  // y = 500;
-  // objects.push_back(AABB(Vector2{x, y}, Vector2{x + NODE_SIZE, y +
-  // NODE_SIZE}));
-
   for (int i = 0; i < NUMBER_OF_NODES; i++)
   {
     objects.push_back(getRandomAABB());
@@ -141,7 +115,7 @@ int main()
 
   printf("\nobject count: %d", (int)objects.size());
 
-  while (!WindowShouldClose())
+  while (!WindowShouldClose() && !done)
   {
     BeginDrawing();
 
@@ -215,8 +189,6 @@ int main()
   }
 
   delete quadTree;
-
-  printf("\nTotal Node structs deleted: %d\n", Node::deleteCounter);
 
   CloseWindow();
 

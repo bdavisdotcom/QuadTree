@@ -15,7 +15,10 @@ QuadTree::QuadTree(const Vector2& min, const Vector2& max)
   _id = QuadTree::nextId++;
 }
 
-QuadTree::~QuadTree() { printf("\nQuadTree dtor(%d)", _id); }
+QuadTree::~QuadTree()
+{
+  // printf("\nQuadTree dtor(%d)", _id);
+}
 
 bool QuadTree::isLeaf() const
 {
